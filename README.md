@@ -10,7 +10,7 @@ Application web d'entraînement sportif personnalisé, en français, pensée pou
 - **Modèles de séances** : full body, haut / bas, push / pull / legs et split par muscle, adaptés au nombre de séances.
 - **Plus de 110 exercices**, chacun avec ses consignes, une variante plus facile et une plus difficile, et un bouton pour le remplacer par un équivalent.
 - **Animation du mouvement** pour chaque exercice, avec les muscles travaillés en rouge.
-- **Mode séance** : chronomètre, minuteur de repos avec bip, saisie des charges et répétitions, charge conseillée.
+- **Mode séance** : ordre des exercices au choix pendant la séance, chronomètre, minuteur de repos avec bip, saisie des charges et répétitions, charge conseillée.
 - **Suivi** : jours actifs d'affilée, calendrier sur 12 semaines, poids corporel, charges, volume, historique.
 - **Montre Garmin (facultatif)** : import des fichiers exportés depuis Garmin Connect (CSV, TCX, FIT ou .zip) pour ajouter fréquence cardiaque, calories et courbe cardiaque aux séances.
 - Thème clair ou sombre, 6 couleurs d'accent, kg ou lb.
