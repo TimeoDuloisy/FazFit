@@ -1153,6 +1153,23 @@ function buildSteps(day,P){
   return steps;
 }
 
+function recomputeRests(ns,day,P){
+  ns.forEach((st,x)=>{ if(st.kind!=='set') return; const n=ns.slice(x+1).find(t=>t.kind==='set');
+    st.rest = !n ? 0 : day.format==='circuit' ? (n.set!==st.set ? day.roundRest : P[st.i].rest) : P[st.i].rest; });
+  return ns;
+}
+// place l'exercice j juste après les étapes déjà faites (séries restantes en musculation, prochain passage en circuit)
+function reorderSteps(o,j){
+  const isDone=st=>st.kind==='set' && o.logs[st.i] && o.logs[st.i][st.set] && o.logs[st.i][st.set].d;
+  let k=o.step; while(k<o.steps.length && o.steps[k].kind==='warmup') k++;
+  const head=o.steps.slice(0,k), tail=o.steps.slice(k);
+  let pick;
+  if(o.day.format==='circuit'){ const t=tail.find(st=>st.kind==='set' && st.i===j && !isDone(st)); pick=t?[t]:[]; }
+  else pick=tail.filter(st=>st.kind==='set' && st.i===j && !isDone(st));
+  if(!pick.length) return o;
+  const ns=recomputeRests([...head,...pick,...tail.filter(st=>!pick.includes(st))].map(st=>({...st})),o.day,o.P);
+  return {...o,steps:ns,draft:null,workEnd:null};
+}
 function SessionView({session,setSession,program,profile,settings,history,onFinish,onAbort}){
   const u=settings.unit;
   const now=useTick(true);
@@ -1244,6 +1261,22 @@ function SessionView({session,setSession,program,profile,settings,history,onFini
       </div>`}
     </section>`}
 
+    ${(st.kind==='set'||st.kind==='warmup') && (()=>{
+      const circuit=day.format==='circuit';
+      const rows=day.items.map((it,i)=>{ const tot=steps.filter(x=>x.kind==='set'&&x.i===i).length; const done=(logs[i]||[]).filter(l=>l&&l.d).length; return {i,ex:EX[it.exId],tot,done}; });
+      const left=rows.filter(r=>r.done<r.tot).length;
+      return html`<section className="card stack">
+        <div className="row between"><h3>Ordre des exercices</h3><span className="small muted">${left} restant${left>1?'s':''}</span></div>
+        <p className="small muted">${circuit?'Choisis l\'exercice suivant du tour quand tu veux.':'Fais les exercices dans l\'ordre qui t\'arrange : touche « Maintenant » pour passer à un autre. Les séries déjà faites sont gardées.'}</p>
+        <div className="stack" style=${{gap:'0'}}>${rows.map(r=>{ const cur=st.kind==='set'&&st.i===r.i; const fin=r.done>=r.tot;
+          return html`<div key=${r.i} className="row between" style=${{padding:'9px 0',borderTop:'1px solid var(--line)',flexWrap:'nowrap'}}>
+            <div className="grow"><div style=${{fontWeight:600,opacity:fin?.55:1}}>${r.ex.n}</div><div className="small muted">${r.done} / ${r.tot} ${circuit?'tours':'séries'}</div></div>
+            ${fin ? html`<span className="pill good">Fait</span>` : cur ? html`<span className="pill acc">En cours</span>`
+              : html`<button className="btn sm" onClick=${()=>setSession(o=>reorderSteps(o,r.i))}>Maintenant</button>`}
+          </div>`; })}</div>
+      </section>`;
+    })()}
+
     ${st.kind==='cooldown' && html`<section className="card stack">
       <span className="eyebrow">Retour au calme</span><h2>Étire-toi</h2>
       <ul className="list">${day.cooldown.map(id=>html`<li key=${id}><b>${EX[id].n}</b> · 45 s<br/><span className="small muted">${EX[id].c}</span></li>`)}</ul>
@@ -1270,6 +1303,10 @@ function SessionView({session,setSession,program,profile,settings,history,onFini
         <span className="eyebrow">Repos</span>
         <div className="big timer num">${fmtClock((session.restEnd-now)/1000)}</div>
         ${nextEx && html`<p className="muted">Ensuite : <b style=${{color:'var(--fg)'}}>${nextEx.n}</b>${nextSet && P[nextSet.i] ? ' · '+(P[nextSet.i].type==='time'?fmtDur(P[nextSet.i].dur):P[nextSet.i].reps+' rép.') : ''}</p>`}
+        ${nextSet && (()=>{ const prevStep=steps[session.step-1]; const switching = day.format==='circuit' || !prevStep || prevStep.kind!=='set' || prevStep.i!==nextSet.i;
+          const others=day.items.map((it,i)=>i).filter(i=>i!==nextSet.i && steps.slice(session.step).some(x=>x.kind==='set'&&x.i===i));
+          return switching && others.length>0 && html`<div className="stack" style=${{gap:'8px',alignItems:'center'}}><span className="small muted">Ou choisis un autre exercice :</span>
+            <div className="chips" style=${{justifyContent:'center'}}>${others.map(i=>html`<button key=${i} className="chip" onClick=${()=>setSession(o=>reorderSteps(o,i))}>${EX[day.items[i].exId].n}</button>`)}</div></div>`; })()}
         <div className="row" style=${{justifyContent:'center'}}>
           <button className="btn" onClick=${()=>setSession(o=>({...o,restEnd:Math.max(Date.now(),o.restEnd-15000)}))}>−15 s</button>
           <button className="btn" onClick=${()=>setSession(o=>({...o,restEnd:o.restEnd+15000}))}>+15 s</button>
